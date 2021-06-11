@@ -3,6 +3,7 @@ from types import DynamicClassAttribute
 from playwright.sync_api import sync_playwright
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment
+from .conf import webhook_key
 
 def aizhan_monitor():
     wb = load_workbook('爱站数据监控.xlsx')
@@ -111,26 +112,11 @@ def aizhan_monitor():
     chrome.close()
     wb.close()
 
-
-    # # 上传到服务器
-    # from ftplib import FTP
-    # ftp = FTP()
-    # ftp.connect(host='122.114.214.234', port=10086)
-    # ftp.login(user='jiwuseo', passwd='S7hEdpBjpmLDeAWm')
-    # bufsize = 1024
-    # fp = open('爱站数据监控.xlsx', 'rb')
-    # ftp.storbinary('STOR ' + '爱站数据监控.xlsx', fp, bufsize)
-    # ftp.quit()
-    # fp.close()
-    # print('# 文件已上传至服务器')
-
-
     # 发送群消息提醒
     import requests
     import json
 
-    key = 'e773640b-4ef9-4102-bdbc-2d7a543d01c2'
-    webhook = 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=%s' % key
+    webhook = 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=%s' % webhook_key
 
     message = {
         "msgtype": "text",
@@ -147,12 +133,12 @@ def aizhan_monitor():
         'Content-Type': 'multipart/form-data',
     }
     params = (
-        ('key', key),
+        ('key', webhook_key),
         ('type', 'file')
     )
     fb = open('爱站数据监控.xlsx', 'rb')
     rsp = requests.post(
-        'https://qyapi.weixin.qq.com/cgi-bin/webhook/upload_media?key=%s&type=file' % key,
+        'https://qyapi.weixin.qq.com/cgi-bin/webhook/upload_media?key=%s&type=file' % webhook_key,
         headers=headers, params=params, files={'file': fb}
     )
     media_id = rsp.json()['media_id']
