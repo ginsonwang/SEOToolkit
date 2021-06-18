@@ -137,7 +137,7 @@ if __name__ == '__main__':
         seeds = [x.strip() for x in open('种子词.txt', 'r', encoding='gbk')]
 
     for seed in seeds:
-        for i in t.get(seed):
+        for i in t.get_sugs_and_drops(seed):
             f.write('%s,%s\n' % (seed, i))
             f.flush()
 

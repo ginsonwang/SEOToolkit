@@ -27,12 +27,46 @@ def check_friendlink(my_link):
             else:
                 return (linka == linkb[:-1])
 
+    def double_check(my_link, link):
+        statu = {
+            0 : '有反链',
+            1 : '有主域反链',
+            2 : '无反链'
+        }
+        statu_code = 3
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            chrome = p.chromium.launch(headless=True)
+            page = chrome.new_page()
+            if '.fang.com' in link:
+                page.goto('https://www.fang.com')
+                time.sleep(3)
+            page.goto(link, timeout=5000)
+            page.goto('view-source:%s' % page.url )
+            soup = BeautifulSoup(page.inner_html('html'),'html.parser')
+            all_link = [
+                x.get('href').strip() 
+                for x in soup.findAll('a') if x.get('href') is not None
+            ]
+            for link in all_link:
+                if is_same(my_link, link):
+                    statu_code = 0
+                    break
+                elif tld in link:
+                    statu_code = 1
+                    break
+                else:
+                    statu_code = 2
+            chrome.close()
+        return statu[statu_code]
+
+
     def is_link_regular(my_link, link):
         print('-- 检查 %s' % link)
         try:
             res = requests.get(link, headers=headers, timeout=10)
         except Exception:
-            return '访问异常'
+            return double_check(link)
         else:
             soup = BeautifulSoup(
                 res.content.decode(res.apparent_encoding, errors='ignore'),
@@ -49,7 +83,7 @@ def check_friendlink(my_link):
                     return '有主域反链'
                 else:
                     continue
-            return '无反链'
+            return double_check(link)
 
     def is_exclude(link):
         exclude_link = [

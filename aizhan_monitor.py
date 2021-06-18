@@ -1,20 +1,32 @@
 import time
-from types import DynamicClassAttribute
 from playwright.sync_api import sync_playwright
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment
 from .conf import webhook_key
 
-def aizhan_monitor():
+# TODO 爱站地址直接访问会超时，尝试通过点击路径方式到达目标页面
+
+def aizhan_monitor(mode='run'):
     wb = load_workbook('爱站数据监控.xlsx')
     wb.save('爱站数据监控_bak.xlsx')
 
     with sync_playwright() as p:
-        chrome = p.chromium.launch()
+        if mode == 'run':
+            chrome = p.chromium.launch()
+        else:
+            mode == 'test'
+            chrome = p.chromium.launch(headless=False)
         page = chrome.new_page()
 
         print('# 爱站关键词总量监控')
-        page.goto('https://baidurank.aizhan.com/baidu/jiwu.com/')
+        # page.goto('https://baidurank.aizhan.com/baidu/jiwu.com/')
+        page.goto('https://www.aizhan.com')
+        time.sleep(1)
+        page.click('input[id="domain"]')
+        time.sleep(0.5)
+        page.fill('input[id="domain"]', 'jiwu.com')
+        time.sleep(1)
+        page.click('input[value="查询"]')
         sheet = wb['吉屋网总词量']
         row = sheet.max_row + 1
         line = [time.strftime('%Y/%m/%d')]
@@ -27,7 +39,7 @@ def aizhan_monitor():
             c = sheet.cell(row=row, column=i+1)
             c.alignment = Alignment(horizontal="center", vertical="center")
             c.value = v
-        wb.save('爱站数据监控.xlsx')
+        # wb.save('爱站数据监控.xlsx')
         print('# 数据已采集\n')
 
 
@@ -51,10 +63,10 @@ def aizhan_monitor():
                 az_jiwu_chl_word.append(
                     page.inner_text(".baidurank-back .red", timeout=3000)
                 )
-                # print(
-                #     platform + '\t' + chl + '\t' + 
-                #     page.inner_text(".baidurank-back .red", timeout=3000)
-                # )
+                print(
+                    platform + '\t' + chl + '\t' + 
+                    page.inner_text(".baidurank-back .red", timeout=3000)
+                )
                 time.sleep(int(time.strftime('%S'))%2 + 3)
         
         sheet = wb['吉屋网各频道词量']
@@ -63,7 +75,7 @@ def aizhan_monitor():
             c = sheet.cell(row=row, column=i+1)
             c.alignment = Alignment(horizontal="center", vertical="center")
             c.value = v
-        wb.save('爱站数据监控.xlsx')
+        # wb.save('爱站数据监控.xlsx')
         print('# 数据已采集\n')
 
 
@@ -89,6 +101,8 @@ def aizhan_monitor():
 
             time.sleep(int(time.strftime('%S'))%2 + 3)
 
+        chrome.close()
+
         brs += h5_brs
         words += h5_words
 
@@ -107,9 +121,7 @@ def aizhan_monitor():
         
         wb.save('爱站数据监控.xlsx')
         print('# 数据已采集\n')
-
-    page.close()
-    chrome.close()
+    
     wb.close()
 
     # 发送群消息提醒
