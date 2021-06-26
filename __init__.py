@@ -4,3 +4,4 @@ from .keyword import *
 from .se_monitor import se_monitor
 from .aizhan_monitor import aizhan_monitor
 from .if_bd_spider import if_bd_spider
+from .baidutj import BaiduTJ
