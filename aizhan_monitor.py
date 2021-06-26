@@ -27,14 +27,18 @@ def aizhan_monitor(mode='run'):
         page.fill('input[id="domain"]', 'jiwu.com')
         time.sleep(1)
         page.click('input[value="查询"]')
+        with page.expect_popup() as popup_info:
+            page.click('a[id="cc1"]')
+        page1 = popup_info.value
+
         sheet = wb['吉屋网总词量']
         row = sheet.max_row + 1
         line = [time.strftime('%Y/%m/%d')]
-        line.append(page.inner_text('#cc1').replace(',', ''))
+        line.append(page1.inner_text('#cc1').replace(',', ''))
         for i in range(0, 10):
-            line.append(page.inner_text('#f_%s' % i))
-        line.insert(7, page.inner_text('#cc2'))
-        line.insert(1, str(int(line[1].replace(',', '')) + int(line[7].replace(',', ''))))
+            line.append(page1.inner_text('#f_%s' % i))
+        line.insert(7, page1.inner_text('#cc2').replace(',', ''))
+        line.insert(1, str(int(line[1]) + int(line[7])))
         for i, v in enumerate(line):
             c = sheet.cell(row=row, column=i+1)
             c.alignment = Alignment(horizontal="center", vertical="center")

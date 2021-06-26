@@ -8,7 +8,7 @@ import time
 import datetime as dt
 from ..conf import baidu_accounts
 
-# TO DO LIST
+# TODO LIST
 # 1. 帐号出现问题时自动切换
 # 2. 批量挖词结果合并去重
 
