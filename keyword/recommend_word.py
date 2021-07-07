@@ -14,12 +14,16 @@ def get_sugs(word):
     se_config = [
         ['https://m.baidu.com', 'input[id="index-kw"]', '.suggest-content', '#index-bn', '.c-slink-new-strong'],
         ['https://m.sogou.com', 'input[id="keyword"]', '.suggestion', 'input[class="qbtn"]', 'a'],
-        ['https://m.so.com', 'input[id="q"]', '.suggest-content', 'button[class="search-btn"]', 'a']
+        ['https://m.so.com', 'input[id="q"]', '.suggest-content', 'button[class="search-btn"]', 'a'],
+        # ['https://m.sm.cn', 'textarea[name="q"]', 'suggest', '.btn.submit', '.c-e-btn']
     ]
     sugs = []
     with sync_playwright() as p:
         chrome = p.chromium.launch()
-        page = chrome.new_page()
+        context = chrome.new_context(
+            user_agent= 'Mozilla/5.0 (Linux; Android 8.0.0; Pixel 2 XL Build/OPD1.170816.004) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Mobile Safari/537.36 Edg/91.0.864.59'
+        )
+        page = context.new_page()
         for i in se_config:
             page.goto(i[0])
             # 获取下拉框关键词
@@ -40,6 +44,7 @@ def get_sugs(word):
                     href = a.get_attribute('href')
                     if ('/s?q=%' in href) or ('?keyword=' in href):
                         sugs.append(a.inner_text())
+        context.close()
         chrome.close()
     return list(set(sugs))
 
