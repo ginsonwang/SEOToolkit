@@ -4,6 +4,7 @@
 from .baidutj import BaiduTJ
 from .conf import bdtjzh
 from .conf import webhook_key
+from .conf import bjx_headers
 import time
 from playwright.sync_api import sync_playwright
 import arrow
@@ -62,6 +63,7 @@ def daily_report():
             page.fill('input[placeholder="请输入密码"]', '582042')
             time.sleep(0.5)
             page.click('.send-verify.ivu-btn.ivu-btn-text')
+            # TODO 验证码转发
             code = input('请输入短信验证码:')
             page.fill('input[placeholder="请输入短信验证码"]', code)
             time.sleep(0.5)
@@ -74,38 +76,33 @@ def daily_report():
         return cookies
 
     cookies = get_fkj_cookie()
-    headers = {
-        'Connection': 'keep-alive',
-        'Accept': 'application/json, text/plain, */*',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.64',
-        'accessToken': 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ3YW5namluZ196b25nYnUiLCJleHAiOjE2MjU0NzQ1NzN9.WoAEnnBd0Vl72QG3sDRcZQX7WmcIJE707bTfL6Hqo1w',
-        'Referer': 'http://bjx.jiwu.com/data-analysis/customer-report',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6,zh-TW;q=0.5',
+    k2s = {
+        'totalBDxcx': '百度小程序',
+        'totalPhone': '来电',
+        'totalZFBxcx': '支付宝小程序',
+        'totalJiwuPC': '吉屋PC',
+        'totalJiwuCP': '吉屋触屏',
+        'totalJWapp': '吉屋APP',
+        'totalWXxcx': '微信小程序'
     }
 
     for t in [ystday, _7day]:
         data = requests.get(
-            'http://bjx.jiwu.com/bjxadmin/alaylsis/detail/terminal_source?timeDimension=&isGjjCustomer=&isEsfCustomer=&terminalType=&cityType=&cityName=&cityId=&startTime=%s&endTime=%s&statisticType=1&isPay=0&total=0&page=1&pageSize=20' % (t.format('YYYY-MM-DD'), t.format('YYYY-MM-DD')), 
-            headers=headers, cookies=cookies
+            'http://bjx.jiwu.com/bjxadmin/alaylsis/total/terminal_source?timeDimension=&isGjjCustomer=&isEsfCustomer=&terminalType=&cityType=&cityName=&cityId=&startTime=%s&endTime=%s&statisticType=1&isPay=0&total=0&page=1&pageSize=20' % (t.format('YYYY-MM-DD'), t.format('YYYY-MM-DD')), 
+            headers=bjx_headers, cookies=cookies
         ).json()
-        for l in data['data']['list']:
-            if l['platform'] not in d.keys():
-                d[l['platform']] = l['totalcustomer']
+        for k, v in data['data'].items():
+            if k not in d.keys():
+                d[k] = v
             else:
-                d[l['platform'] + '_vs'] = l['totalcustomer']
-        
-    for k in ['吉屋PC', '吉屋触屏', '百度小程序', '微信小程序', '吉屋APP', '来电']:
-        rate = ((d[k] - d[k + '_vs'])/d[k + '_vs'])*100
-        if rate > 0:
-            rate = '+' + str(round(rate, 1)) + '%'
-        else:
-            rate = str(round(rate, 1)) + '%'
-        d[k + '_rate'] = rate
-        content += ('\n%s 获客量 {%s}，同比上周{%s_rate}' % (k, k, k)).format(**d)
-    
+                if ((d[k] - v) / v) * 100 > 0:
+                    d['rate'] = '+' + str(round(((d[k] - v) / v) * 100, 1)) + '%'
+                else:
+                    d['rate'] = str(round(((d[k] - v) / v) * 100, 1)) + '%'
+                if k != 'totalCustomer':
+                    content += ('\n%s 获客量 {%s}，同比上周{rate}' % (k2s[k], k)).format(**d)
     print(content)
     
-
     webhook = 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=%s' % webhook_key
 
     message = {
