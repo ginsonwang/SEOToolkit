@@ -1,16 +1,21 @@
 from playwright.sync_api import sync_playwright
 import time
 import csv
+import requests
+
+def get_proxy():
+    targetUrl = "http://piping.mogumiao.com/proxy/api/get_ip_bs?appKey=dac19f0332de458387ba0bc1f1df6295&count=10&expiryDate=0&format=1&newLine=2"
+    rsp = requests.get(targetUrl).json()
+    proxy = rsp['msg'][0]['ip'] + ':' + rsp['msg'][0]['port']
+    return proxy
 
 
 def tt_se_rank(keywords):
     with sync_playwright() as p:
-        chrome = p.chromium.launch(headless=False)
-        page = chrome.new_page()
-        page.goto(
-            'https://so.toutiao.com/search?dvpf=pc&source=input&keyword=买房&page_num=0&pd=synthesis'
-            )
-        time.sleep(int(time.strftime('%S'))%2 + 3)
+        chrome = p.chromium.launch(
+            headless=False,
+            # proxy={"server": "per-context"}
+        )
 
         def get_rank(page):
             rank = []
@@ -43,15 +48,24 @@ def tt_se_rank(keywords):
         writer = csv.writer(rank_file)
 
         for k in keywords:
-            for i in range(0, 5):
-                page.goto(
-                    'https://so.toutiao.com/search?dvpf=pc&source=sug&keyword=%s&page_num=%s&pd=synthesis&source=pagination'
-                    % (k, i))
-                time.sleep(int(time.strftime('%S'))%2 + 3)
-                for line in get_rank(page):
-                    writer.writerows(line)
+            context = chrome.new_context(
+                # proxy={"server": get_proxy()}
+            )
+            page = context.new_page()
+            for i in range(0, 1):
+                try:
+                    page.goto(
+                        'https://so.toutiao.com/search?dvpf=pc&source=sug&keyword=%s&page_num=%s&pd=synthesis&source=pagination'
+                        % (k, i)
+                    )
+                    time.sleep(int(time.strftime('%S'))%2 + 7)
+                    for line in get_rank(page):
+                        writer.writerow(line)
+                except Exception:
+                    continue
+            page.close()
+            context.close()
 
-        page.close()
         chrome.close()
         rank_file.close()
 
