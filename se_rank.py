@@ -163,7 +163,7 @@ def bd_rank_m(keywords, size=10):
         chrome = p.chromium.launch(headless=False)
         context = chrome.new_context(**pixel_2)
         page = context.new_page()
-
+        
         # 定义排名解析函数
         def get_rank(page):
             rank = []
@@ -221,7 +221,7 @@ def bd_rank_m(keywords, size=10):
         time.sleep(2)
 
         # 开始采集关键词排名
-        # colected = []
+        count = 0
         for k in keywords:
             try:
                 page.fill('input[name="word"]', k, timeout=10000)
@@ -239,8 +239,13 @@ def bd_rank_m(keywords, size=10):
                         time.sleep(1)
                         for l in get_rank(page):
                             writer.writerow([k] + l)
-                # colected.append(k)
-                # input('debug')
+                # 设置计数器，搜索次数超过 1000 时刷新浏览器环境避免 js 堆内存不足
+                count += 1
+                if count == 1000:
+                    page.close()
+                    page = context.new_page()
+                    page.goto('https://m.baidu.com')
+                    time.sleep(2)
             except TimeoutError:
                 keywords.append(k)
                 continue
@@ -329,4 +334,4 @@ if __name__ == "__main__":
     keywords = open('待查排名关键词.txt', 'r', encoding='utf-8').readlines()
     keywords = [x.strip() for x in keywords]
 
-    bd_rank_m(keywords[329:], 10)
+    bd_rank_m(keywords, 10)
