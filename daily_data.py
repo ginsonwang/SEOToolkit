@@ -83,7 +83,8 @@ def daily_report():
         'totalJiwuPC': '吉屋PC',
         'totalJiwuCP': '吉屋触屏',
         'totalJWapp': '吉屋APP',
-        'totalWXxcx': '微信小程序'
+        'totalWXxcx': '微信小程序',
+        'totalTTxcx': '头条小程序'
     }
 
     for t in [ystday, _7day]:
