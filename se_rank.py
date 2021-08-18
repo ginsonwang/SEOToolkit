@@ -11,10 +11,7 @@ def get_proxy():
     proxy = rsp['msg'][0]['ip'] + ':' + rsp['msg'][0]['port']
     return proxy
 
-
-# TODO 编写多搜索引擎排名查询函数
-
-
+# PC 头条排名查询
 def tt_rank(keywords):
     with sync_playwright() as p:
         chrome = p.chromium.launch(
@@ -83,10 +80,11 @@ def tt_rank(keywords):
         rank_file.close()
 
 
-def bd_rank(keywords, size=10):
+# PC 百度排名查询
+def bd_rank(keywords, size=10, mode='show'):
     # 构建浏览器环境
     with sync_playwright() as p:
-        chrome = p.chromium.launch(headless=False)
+        chrome = p.chromium.launch(headless=True)
         context = chrome.new_context()
         page = context.new_page()
 
@@ -108,10 +106,13 @@ def bd_rank(keywords, size=10):
                 if tpl is not None and tpl != 'recommend_list':
                     if tpl in tpl_conf.keys():
                         rank_num = div.get_attribute('id')
-                        title = div.query_selector(tpl_conf[tpl][0]).inner_text().strip()
-                        _from = ''
-                        if tpl_conf[tpl][1]:
-                            _from = div.query_selector(tpl_conf[tpl][1]).inner_text().strip()
+                        try:
+                            title = div.query_selector(tpl_conf[tpl][0]).inner_text().strip()
+                        except AttributeError:
+                            title = div.query_selector('.c-title').inner_text().strip()
+                        _from = div.get_attribute('mu')
+                        if _from is None and tpl_conf[tpl][1]:
+                            _from = div.query_selector(tpl_conf[tpl][1]).inner_text().strip()  
                         elif tpl == 'short_video_pc' and '高清在线观看' not in title:
                             _from = div.query_selector('.c-color-gray').inner_text().strip()
                         print(','.join([title, rank_num, _from]))
@@ -130,9 +131,10 @@ def bd_rank(keywords, size=10):
 
         # 开始采集关键词排名
         # colected = []
+        size = int(size)
         for k in keywords:
             try:
-                page.fill('#kw', k, timeout=10)
+                page.fill('#kw', k, timeout=10000)
                 time.sleep(1)
                 page.click('#su')
                 time.sleep(randint(3, 5))
@@ -156,11 +158,13 @@ def bd_rank(keywords, size=10):
         context.close()
         chrome.close()
 
-def bd_rank_m(keywords, size=10):
+
+# H5 百度排名查询
+def bd_rank_m(keywords, size=10, mode='show'):
     # 构建浏览器环境
     with sync_playwright() as p:
         pixel_2 = p.devices['Pixel 2']
-        chrome = p.chromium.launch(headless=False)
+        chrome = p.chromium.launch(headless=True)
         context = chrome.new_context(**pixel_2)
         page = context.new_page()
         
@@ -254,7 +258,7 @@ def bd_rank_m(keywords, size=10):
         context.close()
         chrome.close()    
 
-# TODO 编写 PC 搜狗排名采集函数
+# TODO PC 搜狗排名查询，未完成
 def sg_rank(keywords, size=10):
     def scroll(page):
         # 将页面向下滚动数次
@@ -330,8 +334,18 @@ def sg_rank(keywords, size=10):
         chrome.close()
 
 if __name__ == "__main__":
-    # keywords = ['提前还房贷']
     keywords = open('待查排名关键词.txt', 'r', encoding='utf-8').readlines()
     keywords = [x.strip() for x in keywords]
 
-    bd_rank_m(keywords, 10)
+    print('输入要查询的搜索引擎编号：\n1. 百度PC\n2. 百度H5\n3. 头条搜索PC')
+    se = input('')
+    if se == '1':
+        print('输入要查询的排名范围，如 10、20、50…')
+        size = input('')
+        bd_rank(keywords, size)
+    elif se == '2':
+        bd_rank_m(keywords, 10)
+    elif se == '3':
+        tt_rank(keywords)
+    else:
+        print('输入错误')
