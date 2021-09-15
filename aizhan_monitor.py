@@ -65,11 +65,11 @@ def aizhan_monitor(mode='run'):
                     url = 'https://baidurank.aizhan.com/mobile/jiwu.com/%s/' % chl
                 page.goto(url)
                 az_jiwu_chl_word.append(
-                    page.inner_text(".baidurank-back .red", timeout=3000)
+                    page.inner_text(".baidurank-back .red", timeout=10000)
                 )
                 print(
                     platform + '\t' + chl + '\t' + 
-                    page.inner_text(".baidurank-back .red", timeout=3000)
+                    page.inner_text(".baidurank-back .red", timeout=10000)
                 )
                 time.sleep(int(time.strftime('%S'))%2 + 3)
         
