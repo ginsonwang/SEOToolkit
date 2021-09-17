@@ -2,14 +2,11 @@ from playwright.sync_api import sync_playwright
 from playwright._impl._api_types import TimeoutError
 import time
 import csv
-import requests
 from random import randint
 
-def get_proxy():
-    targetUrl = "http://piping.mogumiao.com/proxy/api/get_ip_bs?appKey=dac19f0332de458387ba0bc1f1df6295&count=10&expiryDate=0&format=1&newLine=2"
-    rsp = requests.get(targetUrl).json()
-    proxy = rsp['msg'][0]['ip'] + ':' + rsp['msg'][0]['port']
-    return proxy
+
+# TODO 增加切换代理 IP 功能，提升查询效率
+
 
 # PC 头条排名查询
 def tt_rank(keywords):
@@ -31,21 +28,21 @@ def tt_rank(keywords):
                 else:
                     title = div.query_selector(
                         '.text-ellipsis.text-underline-hover'
-                        )
+                    )
                     if title is None:
                         continue
                     else:
                         title = title.inner_text()
                     detail = div.query_selector(
                         '.cs-view.cs-view-flex.align-items-center.flex-row.cs-source-content'
-                        )
+                    )
                     if detail is None:
                         continue
                     else:
                         detail = detail.inner_text().replace('\n', ',')
                     rank.append([rank_num, title, detail])
             return rank
-        
+
         def scroll(page):
             # 将页面向下滚动数次
             for _ in range(1, randint(4, 5)):
@@ -61,7 +58,6 @@ def tt_rank(keywords):
             'a+', encoding='utf-8-sig', newline='')
         writer = csv.writer(rank_file)
 
-        
         page.goto('https://so.toutiao.com')
         time.sleep(randint(3, 5))
         for k in keywords:
@@ -84,7 +80,7 @@ def tt_rank(keywords):
 def bd_rank(keywords, size=10, mode='show'):
     # 构建浏览器环境
     with sync_playwright() as p:
-        chrome = p.chromium.launch(headless=True)
+        chrome = p.chromium.launch(headless=False)
         context = chrome.new_context()
         page = context.new_page()
 
@@ -99,7 +95,7 @@ def bd_rank(keywords, size=10, mode='show'):
                 'news-realtime': ['.t', ''],
                 'poi_map_single': ['.c-title', '.c-color-gray'],
                 'bk_polysemy': ['.t', '.c-showurl'],
-                'img_normal': ['.c-title', '.c-color-gray']
+                'img_normal': ['.c-title', '.c-color-gray'],
             }
             for div in page.query_selector_all('.new-pmd.c-container'):
                 tpl = div.get_attribute('tpl')
@@ -107,14 +103,18 @@ def bd_rank(keywords, size=10, mode='show'):
                     if tpl in tpl_conf.keys():
                         rank_num = div.get_attribute('id')
                         try:
-                            title = div.query_selector(tpl_conf[tpl][0]).inner_text().strip()
+                            title = div.query_selector(
+                                tpl_conf[tpl][0]).inner_text().strip()
                         except AttributeError:
-                            title = div.query_selector('.c-title').inner_text().strip()
+                            title = div.query_selector(
+                                '.c-title').inner_text().strip()
                         _from = div.get_attribute('mu')
                         if _from is None and tpl_conf[tpl][1]:
-                            _from = div.query_selector(tpl_conf[tpl][1]).inner_text().strip()  
+                            _from = div.query_selector(
+                                tpl_conf[tpl][1]).inner_text().strip()
                         elif tpl == 'short_video_pc' and '高清在线观看' not in title:
-                            _from = div.query_selector('.c-color-gray').inner_text().strip()
+                            _from = div.query_selector(
+                                '.c-color-gray').inner_text().strip()
                         print(','.join([title, rank_num, _from]))
                         rank.append([title, rank_num, _from])
             return rank
@@ -137,6 +137,7 @@ def bd_rank(keywords, size=10, mode='show'):
                 page.fill('#kw', k, timeout=10000)
                 time.sleep(1)
                 page.click('#su')
+                page.wait_for_load_state()
                 time.sleep(randint(3, 5))
                 for l in get_rank(page):
                     writer.writerow([k] + l)
@@ -158,8 +159,9 @@ def bd_rank(keywords, size=10, mode='show'):
         context.close()
         chrome.close()
 
-
 # H5 百度排名查询
+
+
 def bd_rank_m(keywords, size=10, mode='show'):
     # 构建浏览器环境
     with sync_playwright() as p:
@@ -167,7 +169,7 @@ def bd_rank_m(keywords, size=10, mode='show'):
         chrome = p.chromium.launch(headless=True)
         context = chrome.new_context(**pixel_2)
         page = context.new_page()
-        
+
         # 定义排名解析函数
         def get_rank(page):
             rank = []
@@ -198,7 +200,8 @@ def bd_rank_m(keywords, size=10, mode='show'):
                     if title is not None:
                         title = title.inner_text().strip().replace('\n', '')
                     else:
-                        title = div.query_selector('.c-font-normal').inner_text()
+                        title = div.query_selector(
+                            '.c-font-normal').inner_text()
                     _from = eval(div.get_attribute('data-log'))['mu']
                     if not _from:
                         _from = tpl_conf[tpl][1]
@@ -206,12 +209,13 @@ def bd_rank_m(keywords, size=10, mode='show'):
                     rank.append([title, rank_num, _from])
                 elif tpl != 'recommend_list':
                     try:
-                        title = div.query_selector('.c-title-text').inner_text().strip().replace('\n', '')
+                        title = div.query_selector(
+                            '.c-title-text').inner_text().strip().replace('\n', '')
                         _from = eval(div.get_attribute('data-log'))['mu']
                         print(','.join([title, rank_num, _from]))
                         rank.append([title, rank_num, _from])
                     except AttributeError:
-                        print('!!! 检测到未记录模板：%s' % tpl)                
+                        print('!!! 检测到未记录模板：%s' % tpl)
             return rank
 
         # 准备存储
@@ -228,6 +232,7 @@ def bd_rank_m(keywords, size=10, mode='show'):
         count = 0
         for k in keywords:
             try:
+                page.fill('input[name="word"]', "", timeout=10000)  # 清空搜索框
                 page.fill('input[name="word"]', k, timeout=10000)
                 time.sleep(1)
                 page.click('.se-bn')
@@ -236,7 +241,8 @@ def bd_rank_m(keywords, size=10, mode='show'):
                     writer.writerow([k] + l)
                 if size != 10:
                     for _ in range(1, size//10):
-                        nextpage = page.query_selector('page-controller').query_selector_all('a')[-1]
+                        nextpage = page.query_selector(
+                            'page-controller').query_selector_all('a')[-1]
                         nextpage.click()
                         time.sleep(randint(2, 4))
                         page.press('body', 'End')
@@ -256,9 +262,11 @@ def bd_rank_m(keywords, size=10, mode='show'):
         rank_file.close()
         page.close()
         context.close()
-        chrome.close()    
+        chrome.close()
 
 # TODO PC 搜狗排名查询，未完成
+
+
 def sg_rank(keywords, size=10):
     def scroll(page):
         # 将页面向下滚动数次
@@ -269,7 +277,7 @@ def sg_rank(keywords, size=10):
         for _ in range(1, randint(3, 4)):
             page.press('body', 'PageUp')
             time.sleep(0.3)
-        
+
     # 构建浏览器环境
     with sync_playwright() as p:
         chrome = p.chromium.launch(headless=False)
@@ -278,18 +286,6 @@ def sg_rank(keywords, size=10):
 
         # 定义排名解析函数
         def get_rank(page):
-            rank = []
-            tpl_conf = {
-                'default': ['h3', '.fb'],
-                'wrap_0': ['h3', '.citeurl'],
-                'wrap_1': ['h3','微博热议'],
-                'rb': ['h3', '.citeurl']
-            }
-            for div in page.query_selector_all('.vrwrap:has(h3)'):
-                title = div.query_selector('h3').inner_text().strip()
-                rank_num = div.query_selector('a').get_attribute('id').split('_')[-1]
-
-                print(title + ',' + rank_num)
             return rank
 
         # 准备存储
@@ -306,6 +302,7 @@ def sg_rank(keywords, size=10):
         # colected = []
         for k in keywords:
             try:
+                page.fill('input[name="query"]', "", timeout=10)
                 page.fill('input[name="query"]', k, timeout=10)
                 time.sleep(1)
                 page.click('#stb')
@@ -332,6 +329,7 @@ def sg_rank(keywords, size=10):
         page.close()
         context.close()
         chrome.close()
+
 
 if __name__ == "__main__":
     keywords = open('待查排名关键词.txt', 'r', encoding='utf-8').readlines()
